@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">4D</string>
+    <string name="settings">Settings</string>
+    <string name="detection">Detection</string>
+    <string name="drowsiness">Drowsiness</string>
+    <string name="eye_close_amp_head_drops"><![CDATA[Eye Close & Head Drops]]></string>
+    <string name="phone_use_amp_gaze_deviation"><![CDATA[Phone Use & Gaze Deviation]]></string>
+    <string name="distraction">Distraction</string>
+    <string name="alarm_sound">Alarm Sound</string>
+    <string name="add_alarm">Add Alarm</string>
+    <string name="options">Options</string>
+    <string name="disable_detection">Disable Detection</string>
 </resources>

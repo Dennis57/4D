@@ -1,27 +1,256 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     tools:context=".ui.activity.MainActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/cl_main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:padding="12dp">
 
         <TextView
-            android:id="@+id/tv_hello_world"
+            android:id="@+id/tv_settings"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            tools:text="Hello World"
-            app:layout_constraintTop_toTopOf="parent"
+            android:text="@string/settings"
+            android:textSize="@dimen/text_24"
+            android:textStyle="bold"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_detection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/setting_background_grey_corner"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintTop_toBottomOf="@id/tv_settings">
+
+            <TextView
+                android:id="@+id/tv_detection"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/detection"
+                android:textSize="@dimen/text_18"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <LinearLayout
+                android:id="@+id/ll_drowsiness_box"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal"
+                android:weightSum="10"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_detection">
+
+                <LinearLayout
+                    android:id="@+id/ll_drowsiness_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="8"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_drowsiness_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/drowsiness"
+                        android:textSize="@dimen/text_14"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_drowsiness_desc"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/eye_close_amp_head_drops"
+                        android:textSize="@dimen/text_14" />
+
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/sm_drowsiness"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/ll_distraction_box"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:weightSum="10"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ll_drowsiness_box">
+
+                <LinearLayout
+                    android:id="@+id/ll_distraction_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="8"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_distraction_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/distraction"
+                        android:textSize="@dimen/text_14"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_distraction_desc"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/phone_use_amp_gaze_deviation"
+                        android:textSize="@dimen/text_14" />
+
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/sm_distraction"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2" />
+
+            </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_alarm_sound"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/setting_background_grey_corner"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cl_detection">
+
+            <TextView
+                android:id="@+id/tv_alarm_sound"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/alarm_sound"
+                android:textSize="@dimen/text_18"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_alarm_sound"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toBottomOf="@id/tv_alarm_sound"
+                tools:itemCount="5"
+                tools:listitem="@layout/item_alarm_sound" />
+
+            <Button
+                android:id="@+id/btn_add_alarm_sound"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/add_alarm"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/rv_alarm_sound" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_disable_detection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/setting_background_grey_corner"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cl_alarm_sound">
+
+            <TextView
+                android:id="@+id/tv_disable_detection"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/disable_detection"
+                android:textSize="@dimen/text_18"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <LinearLayout
+                android:id="@+id/ll_disable_detection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintTop_toBottomOf="@id/tv_disable_detection"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                android:weightSum="10">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/c_five_min"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="5 min"
+                    android:layout_marginHorizontal="4dp"
+                    android:textAlignment="center"
+                    android:layout_weight="2.5"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/c_ten_min"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="10 min"
+                    android:layout_marginHorizontal="4dp"
+                    android:textAlignment="center"
+                    android:layout_weight="2.5"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/c_twenty_min"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="20 min"
+                    android:layout_marginHorizontal="4dp"
+                    android:textAlignment="center"
+                    android:layout_weight="2.5"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/c_thirty_min"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="30 min"
+                    android:layout_marginHorizontal="4dp"
+                    android:textAlignment="center"
+                    android:layout_weight="2.5"/>
+
+            </LinearLayout>
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toBottomOf="@id/ll_disable_detection"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                android:textAlignment="center"
+                android:hint="Custom Number (Minutes)"
+                android:background="@android:color/transparent"
+                android:inputType="number" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 
 
 </layout>

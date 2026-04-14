@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <data>
+        <variable
+            name="alarmSound"
+            type="com.example.a4d.database.entity.AlarmSound" />
+    </data>
+    <LinearLayout
+        android:paddingHorizontal="8dp"
+        android:id="@+id/cl_item_alarm_sound"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:clickable="true"
+        android:focusable="true">
+
+        <RadioButton
+            android:id="@+id/rb_alarm_sound"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:checked="@{alarmSound.isEnabled}"
+            android:text="@{alarmSound.name}"
+            android:clickable="false"
+            android:focusable="false"
+            tools:text="Default Sound"/>
+
+        <ImageButton
+            android:layout_gravity="center"
+            android:id="@+id/btn_more"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_more_vert_24"
+            android:contentDescription="@string/options"
+            android:background="@null"
+            />
+
+    </LinearLayout>
+
+</layout>
