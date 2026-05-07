@@ -18,6 +18,13 @@ class AlarmSoundViewModel(private val dao: AlarmSoundDao) : ViewModel() {
             dao.enableById(alarmSound.id)
         }
     }
+
+    fun addAlarmSound(name: String, uri: String) {
+        viewModelScope.launch {
+            val newSound = AlarmSound(name = name, uri = uri, isEnabled = false)
+            dao.insert(newSound)
+        }
+    }
 }
 
 class AlarmSoundViewModelFactory(private val dao: AlarmSoundDao) : ViewModelProvider.Factory {
