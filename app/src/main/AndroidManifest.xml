@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools" >
 
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:name=".ui.activity.AppActivity"
         android:allowBackup="true"
@@ -21,6 +23,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.activity.DetectionActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

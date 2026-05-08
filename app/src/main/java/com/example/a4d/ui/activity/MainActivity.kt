@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.EditText
 import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -20,6 +21,8 @@ import com.example.a4d.database.entity.AlarmSound
 import com.example.a4d.databinding.ActivityMainBinding
 import com.example.a4d.ui.viewmodel.AlarmSoundViewModel
 import com.example.a4d.ui.viewmodel.AlarmSoundViewModelFactory
+import com.example.a4d.util.TimerManager
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,9 +31,10 @@ class MainActivity : AppCompatActivity() {
         AlarmSoundViewModelFactory((application as AppActivity).database.alarmSoundDao())
     }
 
-    private val pickAudioLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { showNameInputDialog(it) }
-    }
+    private val pickAudioLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            uri?.let { showNameInputDialog(it) }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +45,9 @@ class MainActivity : AppCompatActivity() {
 
         setupAlarmSoundAdapter()
         setupAddButton()
+        setupTimerButtons()
+        setupNavigationButton()
+        observeTimer()
 
         // Make sure that the initializations are not inside the setOnAppWindowInsetsListener
         val initialPaddingLeft = binding.clMain.paddingLeft
@@ -65,6 +72,55 @@ class MainActivity : AppCompatActivity() {
     private fun setupAddButton() {
         binding.btnAddAlarmSound.setOnClickListener {
             pickAudioLauncher.launch("audio/*")
+        }
+    }
+
+    private fun setupTimerButtons() {
+        binding.cFiveMin.setOnClickListener { binding.etCustomNumber.setText("5") }
+        binding.cTenMin.setOnClickListener { binding.etCustomNumber.setText("10") }
+        binding.cTwentyMin.setOnClickListener { binding.etCustomNumber.setText("20") }
+        binding.cThirtyMin.setOnClickListener { binding.etCustomNumber.setText("30") }
+
+        binding.btnStartTimer.setOnClickListener {
+            val minutesStr = binding.etCustomNumber.text.toString()
+            if (minutesStr.isNotEmpty()) {
+                val minutes = minutesStr.toInt()
+                TimerManager.startTimer(minutes)
+                Toast.makeText(this, "Timer started for $minutes minutes", Toast.LENGTH_SHORT)
+                    .show()
+            } else {
+                Toast.makeText(this, "Please enter minutes", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        binding.btnStopTimer.setOnClickListener {
+            TimerManager.stopTimer()
+            Toast.makeText(this, "Timer stopped", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupNavigationButton() {
+        binding.btnGoToDetection.setOnClickListener {
+            val intent = Intent(this, DetectionActivity::class.java)
+            startActivity(intent)
+        }
+    }
+
+    private fun observeTimer() {
+        TimerManager.isTimerRunning.observe(this) { isRunning ->
+            binding.btnStartTimer.isEnabled = !isRunning
+            binding.btnStopTimer.isEnabled = isRunning
+        }
+
+        TimerManager.remainingTime.observe(this) { millis ->
+            if (millis > 0) {
+                val minutes = (millis / 1000) / 60
+                val seconds = (millis / 1000) % 60
+                binding.btnStartTimer.text =
+                    String.format(Locale.getDefault(), "Running (%02d:%02d)", minutes, seconds)
+            } else {
+                binding.btnStartTimer.text = "Start Timer"
+            }
         }
     }
 
@@ -94,7 +150,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun showMoreOptionsPopup(sound: AlarmSound) {
         // Find the view to anchor the popup.
-        val view = binding.rvAlarmSound.findViewWithTag<android.view.View>(sound.id) ?: binding.btnAddAlarmSound
+        val view = binding.rvAlarmSound.findViewWithTag<android.view.View>(sound.id)
+            ?: binding.btnAddAlarmSound
 
         val popup = PopupMenu(this, view)
         popup.menuInflater.inflate(R.menu.menu_alarm_sound_options, popup.menu)
@@ -105,10 +162,12 @@ class MainActivity : AppCompatActivity() {
                     showEditNameDialog(sound)
                     true
                 }
+
                 R.id.action_delete -> {
                     showDeleteConfirmationDialog(sound)
                     true
                 }
+
                 else -> false
             }
         }
