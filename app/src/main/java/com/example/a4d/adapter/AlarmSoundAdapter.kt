@@ -91,6 +91,9 @@ class AlarmSoundAdapter(
             binding.btnMore.setOnClickListener {
                 onMoreOptionsClicked(item)
             }
+            
+            // Set tag for finding the view in MainActivity (used for anchoring the PopupMenu)
+            binding.btnMore.tag = item.id
 
             binding.rbAlarmSound.text = item.name
 

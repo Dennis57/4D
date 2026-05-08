@@ -21,6 +21,9 @@ interface AlarmSoundDao {
     @Update
     suspend fun update(alarmSound: AlarmSound)
 
+    @androidx.room.Delete
+    suspend fun delete(alarmSound: AlarmSound)
+
     @Query("UPDATE alarm_sounds SET is_enabled = 0")
     suspend fun disableAll()
 

@@ -25,6 +25,18 @@ class AlarmSoundViewModel(private val dao: AlarmSoundDao) : ViewModel() {
             dao.insert(newSound)
         }
     }
+
+    fun deleteAlarmSound(alarmSound: AlarmSound) {
+        viewModelScope.launch {
+            dao.delete(alarmSound)
+        }
+    }
+
+    fun updateAlarmSound(alarmSound: AlarmSound) {
+        viewModelScope.launch {
+            dao.update(alarmSound)
+        }
+    }
 }
 
 class AlarmSoundViewModelFactory(private val dao: AlarmSoundDao) : ViewModelProvider.Factory {

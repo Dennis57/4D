@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.EditText
+import android.widget.PopupMenu
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -15,6 +16,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.a4d.R
 import com.example.a4d.adapter.AlarmSoundAdapter
+import com.example.a4d.database.entity.AlarmSound
 import com.example.a4d.databinding.ActivityMainBinding
 import com.example.a4d.ui.viewmodel.AlarmSoundViewModel
 import com.example.a4d.ui.viewmodel.AlarmSoundViewModelFactory
@@ -89,13 +91,63 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun showMoreOptionsPopup(sound: AlarmSound) {
+        // Find the view to anchor the popup.
+        val view = binding.rvAlarmSound.findViewWithTag<android.view.View>(sound.id) ?: binding.btnAddAlarmSound
+
+        val popup = PopupMenu(this, view)
+        popup.menuInflater.inflate(R.menu.menu_alarm_sound_options, popup.menu)
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_edit -> {
+                    showEditNameDialog(sound)
+                    true
+                }
+                R.id.action_delete -> {
+                    showDeleteConfirmationDialog(sound)
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun showEditNameDialog(sound: AlarmSound) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_alarm_sound, null)
+        val etName = dialogView.findViewById<EditText>(R.id.et_alarm_name)
+        etName.setText(sound.name)
+
+        AlertDialog.Builder(this)
+            .setTitle("Edit Alarm Sound Name")
+            .setView(dialogView)
+            .setPositiveButton("Save") { _, _ ->
+                val newName = etName.text.toString().ifBlank { sound.name }
+                viewModel.updateAlarmSound(sound.copy(name = newName))
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showDeleteConfirmationDialog(sound: AlarmSound) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Alarm Sound")
+            .setMessage("Are you sure you want to delete '${sound.name}'?")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.deleteAlarmSound(sound)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun setupAlarmSoundAdapter() {
         val adapter = AlarmSoundAdapter(
             onSoundSelected = { sound ->
                 viewModel.selectAlarmSound(sound)
             },
             onMoreOptionsClicked = { sound ->
-                // Handle more options (e.g., show a popup menu)
+                showMoreOptionsPopup(sound)
             }
         )
 
