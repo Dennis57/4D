@@ -42,13 +42,14 @@ class MainActivity : AppCompatActivity() {
         setupAlarmSoundAdapter()
         setupAddButton()
 
+        // Make sure that the initializations are not inside the setOnAppWindowInsetsListener
+        val initialPaddingLeft = binding.clMain.paddingLeft
+        val initialPaddingTop = binding.clMain.paddingTop
+        val initialPaddingRight = binding.clMain.paddingRight
+        val initialPaddingBottom = binding.clMain.paddingBottom
+
         ViewCompat.setOnApplyWindowInsetsListener(binding.clMain) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-
-            val initialPaddingLeft = v.paddingLeft
-            val initialPaddingTop = v.paddingTop
-            val initialPaddingRight = v.paddingRight
-            val initialPaddingBottom = v.paddingBottom
 
             v.setPadding(
                 initialPaddingLeft + systemBars.left,
