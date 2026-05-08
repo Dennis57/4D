@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,11 +46,37 @@ class DetectionActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbarDetection)
-        supportActionBar?.setDisplayShowTitleEnabled(false)
+        supportActionBar?.apply {
+            title = "Detecting Driver"
+            setDisplayShowTitleEnabled(true)
+        }
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.toolbarDetection) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(0, systemBars.top, 0, 0)
+        val initialStatusMargin = (binding.tvDetectionStatus.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            
+            // Toolbar: Use padding for sides and top to keep the white background extending to edges
+            // while pushing content away from navigation bars, status bar and cutouts
+            val toolbarParams = binding.toolbarDetection.layoutParams as ViewGroup.MarginLayoutParams
+            toolbarParams.leftMargin = 0
+            toolbarParams.rightMargin = 0
+            binding.toolbarDetection.layoutParams = toolbarParams
+            binding.toolbarDetection.setPadding(bars.left, bars.top, bars.right, 0)
+            
+            // Status text: Stay above bottom navigation bar and away from side bars
+            val statusParams = binding.tvDetectionStatus.layoutParams as ViewGroup.MarginLayoutParams
+            statusParams.bottomMargin = initialStatusMargin + bars.bottom
+            statusParams.leftMargin = bars.left
+            statusParams.rightMargin = bars.right
+            binding.tvDetectionStatus.layoutParams = statusParams
+
+            // Countdown: Keep centered relative to the visible area
+            val countdownParams = binding.tvCountdown.layoutParams as ViewGroup.MarginLayoutParams
+            countdownParams.leftMargin = bars.left
+            countdownParams.rightMargin = bars.right
+            binding.tvCountdown.layoutParams = countdownParams
+
             insets
         }
 

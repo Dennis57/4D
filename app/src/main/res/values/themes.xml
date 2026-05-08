@@ -6,4 +6,6 @@
     </style>
 
     <style name="Theme._4D" parent="Base.Theme._4D" />
+
+    <style name="Theme._4D.Detection" parent="Theme._4D" />
 </resources>

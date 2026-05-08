@@ -16,7 +16,8 @@
         android:theme="@style/Theme._4D" >
         <activity
             android:name=".ui.activity.MainActivity"
-            android:exported="true" >
+            android:exported="true"
+            android:screenOrientation="portrait" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -25,7 +26,10 @@
         </activity>
         <activity
             android:name=".ui.activity.DetectionActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme._4D.Detection" />
     </application>
 
 </manifest>
