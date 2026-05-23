@@ -2,6 +2,9 @@ package com.example.a4d.ui.activity
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -10,6 +13,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
@@ -17,9 +21,14 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.a4d.R
+import com.example.a4d.database.AppDatabase
 import com.example.a4d.databinding.ActivityDetectionBinding
 import com.example.a4d.util.TimerManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -27,6 +36,9 @@ class DetectionActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityDetectionBinding
     private lateinit var cameraExecutor: ExecutorService
+    private var mediaPlayer: MediaPlayer? = null
+    private var tapCount = 0
+    private var lastTapTime: Long = 0
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -89,6 +101,82 @@ class DetectionActivity : AppCompatActivity() {
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         observeTimer()
+        setupTestTrigger()
+    }
+
+    private fun setupTestTrigger() {
+        binding.tvDetectionStatus.setOnClickListener {
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastTapTime > 1000) {
+                tapCount = 1
+            } else {
+                tapCount++
+            }
+            lastTapTime = currentTime
+
+            if (tapCount >= 5) {
+                tapCount = 0
+                triggerAlarm()
+            }
+        }
+    }
+
+    private fun triggerAlarm() {
+        lifecycleScope.launch {
+            val selectedAlarm = withContext(Dispatchers.IO) {
+                AppDatabase.getDatabase(this@DetectionActivity).alarmSoundDao().getSelected()
+            }
+
+            if (selectedAlarm != null) {
+                playAlarm(selectedAlarm.uri)
+                showAlarmDialog()
+            } else {
+                Toast.makeText(this@DetectionActivity, "No alarm sound selected", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun playAlarm(uriString: String) {
+        mediaPlayer?.release()
+        try {
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(this@DetectionActivity, Uri.parse(uriString))
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                isLooping = true
+                prepare()
+                start()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Failed to play alarm", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showAlarmDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Alert")
+            .setMessage("Drowsy / Distracted is detected!")
+            .setCancelable(false)
+            .setPositiveButton("OK") { dialog, _ ->
+                stopAlarm()
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun stopAlarm() {
+        mediaPlayer?.let {
+            if (it.isPlaying) {
+                it.stop()
+            }
+            it.release()
+        }
+        mediaPlayer = null
     }
 
     private fun observeTimer() {
@@ -152,5 +240,6 @@ class DetectionActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
+        stopAlarm()
     }
 }

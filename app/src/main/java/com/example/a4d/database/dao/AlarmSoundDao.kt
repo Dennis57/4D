@@ -29,4 +29,7 @@ interface AlarmSoundDao {
 
     @Query("UPDATE alarm_sounds SET is_enabled = 1 WHERE id = :id")
     suspend fun enableById(id: Int)
+
+    @Query("SELECT * FROM alarm_sounds WHERE is_enabled = 1 LIMIT 1")
+    suspend fun getSelected(): AlarmSound?
 }
