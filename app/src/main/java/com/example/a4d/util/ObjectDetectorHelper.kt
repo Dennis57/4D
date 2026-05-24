@@ -2,15 +2,14 @@ package com.example.a4d.util
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.os.SystemClock
 import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.common.FileUtil
-import org.tensorflow.lite.support.common.ops.NormalizeOp
-import org.tensorflow.lite.support.image.ImageProcessor
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.support.image.ops.ResizeOp
-import org.tensorflow.lite.support.image.ops.Rot90Op
-import org.tensorflow.lite.support.image.ops.ResizeOp.ResizeMethod
+import android.content.res.AssetFileDescriptor
+import java.io.FileInputStream
+import java.nio.channels.FileChannel
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 
 class ObjectDetectorHelper(
@@ -18,129 +17,170 @@ class ObjectDetectorHelper(
     val objectDetectorListener: DetectorListener?
 ) {
     private var interpreter: Interpreter? = null
+
     private val labels = listOf(
-        "Drowsiness/eyes_state/open", "Drowsiness/eyes_state/close", "Drowsiness/yawning/with_hand",
-        "Drowsiness/yawning/without_hand", "Distraction/gaze/looking_road", "Distraction/gaze/not_looking_road",
-        "Distraction/talking", "Distraction/driver_actions/safe_drive", "Distraction/driver_actions/drinking",
-        "Distraction/driver_actions/hair_and_makeup", "Distraction/driver_actions/phonecall_left",
-        "Distraction/driver_actions/phonecall_right", "Distraction/driver_actions/radio",
-        "Distraction/driver_actions/reach_backseat", "Distraction/driver_actions/reach_side",
-        "Distraction/driver_actions/talking_to_passenger", "Distraction/driver_actions/texting_left",
-        "Distraction/driver_actions/texting_right", "Distraction/driver_actions/change_gear"
+        "Drowsiness/eyes_state/open",
+        "Drowsiness/eyes_state/close",
+        "Drowsiness/yawning/with_hand",
+        "Drowsiness/yawning/without_hand",
+        "Distraction/gaze/looking_road",
+        "Distraction/gaze/not_looking_road",
+        "Distraction/talking",
+        "Distraction/driver_actions/safe_drive",
+        "Distraction/driver_actions/drinking",
+        "Distraction/driver_actions/hair_and_makeup",
+        "Distraction/driver_actions/phonecall_left",
+        "Distraction/driver_actions/phonecall_right",
+        "Distraction/driver_actions/radio",
+        "Distraction/driver_actions/reach_backseat",
+        "Distraction/driver_actions/reach_side",
+        "Distraction/driver_actions/talking_to_passenger",
+        "Distraction/driver_actions/texting_left",
+        "Distraction/driver_actions/texting_right",
+        "Distraction/driver_actions/change_gear"
     )
 
-    private var inputImageWidth = 0
-    private var inputImageHeight = 0
+    private var inputW = 640
+    private var inputH = 640
+    private var numClasses = labels.size
 
-    init {
-        setupObjectDetector()
+    companion object {
+        private const val CONF_THRESHOLD = 0.35f
+        private const val IOU_THRESHOLD  = 0.45f
+        private const val MODEL_FILE     = "best_float32.tflite"
     }
+
+    init { setupObjectDetector() }
 
     fun setupObjectDetector() {
         try {
-            val model: MappedByteBuffer = FileUtil.loadMappedFile(context, "best.tflite")
-            val options = Interpreter.Options()
-            interpreter = Interpreter(model, options)
+            val assetList = context.assets.list("")
+            android.util.Log.d("TFLite", "Assets found: ${assetList?.joinToString()}")
 
-            // Detect input shape [1, height, width, 3]
-            val inputShape = interpreter?.getInputTensor(0)?.shape()
-            inputImageHeight = inputShape?.get(1) ?: 320
-            inputImageWidth = inputShape?.get(2) ?: 320
+            val fd = context.assets.openFd(MODEL_FILE)
+            android.util.Log.d("TFLite", "Model fd size: ${fd.declaredLength} bytes")
+
+            val model: MappedByteBuffer = context.assets.openFd(MODEL_FILE).let { fd ->
+                FileInputStream(fd.fileDescriptor).channel
+                    .map(FileChannel.MapMode.READ_ONLY, fd.startOffset, fd.declaredLength)
+            }
+            interpreter = Interpreter(model, Interpreter.Options().apply { numThreads = 4 })
+
+            val inShape  = interpreter!!.getInputTensor(0).shape()  // [1, H, W, 3]
+            inputH = inShape[1]; inputW = inShape[2]
+
+            val outShape = interpreter!!.getOutputTensor(0).shape() // [1, 4+nc, anchors]
+            numClasses   = outShape[1] - 4
 
         } catch (e: Exception) {
-            objectDetectorListener?.onError("TFLite Interpreter failed to initialize: ${e.message}")
-            e.printStackTrace()
+            objectDetectorListener?.onError("TFLite init failed: ${e.message}")
         }
     }
 
     fun detect(bitmap: Bitmap, imageRotation: Int) {
-        val interpreter = this.interpreter ?: return
+        val interp = interpreter ?: return
+        val startTime = SystemClock.uptimeMillis()
 
-        var inferenceTime = SystemClock.uptimeMillis()
+        // 1. Rotate + resize bitmap manually (no support lib needed)
+        val rotated = rotateBitmap(bitmap, imageRotation)
+        val resized  = Bitmap.createScaledBitmap(rotated, inputW, inputH, true)
 
-        // 1. Preprocess the image
-        // Most TFLite models use 127.5 mean/std for normalization.
-        val imageProcessor = ImageProcessor.Builder()
-            .add(ResizeOp(inputImageHeight, inputImageWidth, ResizeMethod.BILINEAR))
-            .add(Rot90Op(-imageRotation / 90))
-            .add(NormalizeOp(127.5f, 127.5f))
-            .build()
+        // 2. Fill input ByteBuffer: RGBA_8888 bitmap → float32 RGB / 255
+        val inputBuffer = ByteBuffer.allocateDirect(1 * inputH * inputW * 3 * 4)
+            .order(ByteOrder.nativeOrder())
+        val pixels = IntArray(inputW * inputH)
+        resized.getPixels(pixels, 0, inputW, 0, 0, inputW, inputH)
+        for (px in pixels) {
+            inputBuffer.putFloat(((px shr 16) and 0xFF) / 255f)  // R
+            inputBuffer.putFloat(((px shr  8) and 0xFF) / 255f)  // G
+            inputBuffer.putFloat(( px         and 0xFF) / 255f)  // B
+        }
+        inputBuffer.rewind()
 
-        var tensorImage = TensorImage(interpreter.getInputTensor(0).dataType())
-        tensorImage.load(bitmap)
-        tensorImage = imageProcessor.process(tensorImage)
-
-        // 2. Prepare output buffers for standard Object Detection models
-        // Typical SSD outputs: [1, 10, 4], [1, 10], [1, 10], [1]
-        val outputLocations = Array(1) { Array(10) { FloatArray(4) } }
-        val outputClasses = Array(1) { FloatArray(10) }
-        val outputScores = Array(1) { FloatArray(10) }
-        val numDetections = FloatArray(1)
-
-        val outputs = mutableMapOf<Int, Any>(
-            0 to outputLocations,
-            1 to outputClasses,
-            2 to outputScores,
-            3 to numDetections
-        )
+        // 3. Prepare output: [1, (4+nc), numAnchors]
+        val outShape   = interp.getOutputTensor(0).shape()
+        val numAnchors = outShape[2]
+        val rawOutput  = Array(1) { Array(outShape[1]) { FloatArray(numAnchors) } }
 
         try {
-            interpreter.runForMultipleInputsOutputs(arrayOf(tensorImage.buffer), outputs)
-            
-            inferenceTime = SystemClock.uptimeMillis() - inferenceTime
-
-            val detections = mutableListOf<Detection>()
-            for (i in 0 until numDetections[0].toInt().coerceAtMost(10)) {
-                if (outputScores[0][i] > 0.5f) {
-                    val classIndex = outputClasses[0][i].toInt()
-                    val label = if (classIndex in labels.indices) labels[classIndex] else "Unknown"
-                    detections.add(
-                        Detection(
-                            categories = listOf(Category(label, outputScores[0][i], classIndex))
-                        )
-                    )
-                }
-            }
-
-            objectDetectorListener?.onResults(
-                DetectionResults(detections),
-                inferenceTime,
-                bitmap.height,
-                bitmap.width
-            )
+            interp.run(inputBuffer, rawOutput)
         } catch (e: Exception) {
-            // If the model isn't a standard 4-output detector, this might fail.
             objectDetectorListener?.onError("Inference failed: ${e.message}")
+            return
+        }
+
+        val inferenceTime = SystemClock.uptimeMillis() - startTime
+        val detections    = parseYoloOutput(rawOutput[0], numAnchors, bitmap.width, bitmap.height)
+
+        objectDetectorListener?.onResults(
+            DetectionResults(detections), inferenceTime, bitmap.height, bitmap.width
+        )
+    }
+
+    private fun rotateBitmap(bitmap: Bitmap, rotation: Int): Bitmap {
+        if (rotation == 0) return bitmap
+        val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    private fun parseYoloOutput(
+        output: Array<FloatArray>, numAnchors: Int, origW: Int, origH: Int
+    ): List<Detection> {
+        val candidates = mutableListOf<RawDetection>()
+        for (a in 0 until numAnchors) {
+            var maxScore = 0f; var classIdx = 0
+            for (c in 0 until numClasses) {
+                val s = output[4 + c][a]
+                if (s > maxScore) { maxScore = s; classIdx = c }
+            }
+            if (maxScore < CONF_THRESHOLD) continue
+
+            val cx = output[0][a]; val cy = output[1][a]
+            val bw = output[2][a]; val bh = output[3][a]
+            val x1 = ((cx - bw / 2f) * origW).coerceIn(0f, origW.toFloat())
+            val y1 = ((cy - bh / 2f) * origH).coerceIn(0f, origH.toFloat())
+            val x2 = ((cx + bw / 2f) * origW).coerceIn(0f, origW.toFloat())
+            val y2 = ((cy + bh / 2f) * origH).coerceIn(0f, origH.toFloat())
+            candidates.add(RawDetection(x1, y1, x2, y2, maxScore, classIdx))
+        }
+        return applyNms(candidates).map { raw ->
+            val label = if (raw.classIdx in labels.indices) labels[raw.classIdx] else "Unknown"
+            Detection(listOf(Category(label, raw.score, raw.classIdx)))
         }
     }
 
-    fun clearObjectDetector() {
-        interpreter?.close()
-        interpreter = null
+    private fun applyNms(detections: List<RawDetection>): List<RawDetection> {
+        val sorted = detections.sortedByDescending { it.score }.toMutableList()
+        val kept   = mutableListOf<RawDetection>()
+        while (sorted.isNotEmpty()) {
+            val best = sorted.removeAt(0)
+            kept.add(best)
+            sorted.removeAll { iou(best, it) > IOU_THRESHOLD }
+        }
+        return kept
     }
 
-    // Helper classes to maintain compatibility with existing Activity logic
-    data class DetectionResults(private val detections: List<Detection>) {
-        fun detections() = detections
+    private fun iou(a: RawDetection, b: RawDetection): Float {
+        val ix1 = maxOf(a.x1, b.x1); val iy1 = maxOf(a.y1, b.y1)
+        val ix2 = minOf(a.x2, b.x2); val iy2 = minOf(a.y2, b.y2)
+        val inter = maxOf(0f, ix2 - ix1) * maxOf(0f, iy2 - iy1)
+        return inter / ((a.x2-a.x1)*(a.y2-a.y1) + (b.x2-b.x1)*(b.y2-b.y1) - inter + 1e-6f)
     }
 
-    data class Detection(private val categories: List<Category>) {
-        fun categories() = categories
-    }
+    private data class RawDetection(
+        val x1: Float, val y1: Float, val x2: Float, val y2: Float,
+        val score: Float, val classIdx: Int
+    )
 
-    data class Category(private val label: String, private val score: Float, private val index: Int) {
-        fun categoryName() = label
-        fun score() = score
-        fun index() = index
-    }
+    fun clearObjectDetector() { interpreter?.close(); interpreter = null }
 
+    data class DetectionResults(private val d: List<Detection>) { fun detections() = d }
+    data class Detection(private val c: List<Category>)         { fun categories() = c }
+    data class Category(private val l: String, private val s: Float, private val i: Int) {
+        fun categoryName() = l; fun score() = s; fun index() = i
+    }
     interface DetectorListener {
         fun onError(error: String)
-        fun onResults(
-            result: DetectionResults?,
-            inferenceTime: Long,
-            imageHeight: Int,
-            imageWidth: Int
-        )
+        fun onResults(result: DetectionResults?, inferenceTime: Long, imageHeight: Int, imageWidth: Int)
     }
 }
