@@ -16,7 +16,8 @@ import kotlinx.coroutines.launch
 @Database(entities = [
     Users::class,
     AlarmSound::class],
-    version = 2)
+    version = 2,
+    exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun usersDao(): UsersDao
