@@ -71,5 +71,6 @@ dependencies {
     implementation(libs.androidx.camera.view)
 
     implementation("org.tensorflow:tensorflow-lite:2.17.0")
+    implementation("com.google.mediapipe:tasks-vision:0.10.14")
 
 }

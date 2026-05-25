@@ -283,7 +283,15 @@ class DetectionActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorList
                 
                 // Unsafe states based on model indices:
                 // 1: close, 8: drinking, 10: phonecall_left, 11: phonecall_right, 12: radio
-                val unsafeIndices = listOf(1, 8, 10, 11, 12)
+                // Old 19-class indices → New 15-class indices
+                val unsafeIndices = listOf(
+                    0,  // yawning/with_hand
+                    1,  // yawning/without_hand
+                    2,  // talking
+                    4,  // drinking
+                    6,  // phonecall_left
+                    7,  // phonecall_right
+                )
                 val isUnsafe = index in unsafeIndices && score > 0.5f
 
                 if (isUnsafe) {
