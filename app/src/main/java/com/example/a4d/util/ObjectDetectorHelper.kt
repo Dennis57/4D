@@ -41,6 +41,24 @@ class ObjectDetectorHelper(
         "Distraction/driver_actions/change_gear"
     )
 
+    private val displayNames = mapOf(
+        "Drowsiness/yawning/with_hand"                    to "Yawning (with hand)",
+        "Drowsiness/yawning/without_hand"                 to "Yawning",
+        "Distraction/talking"                             to "Talking",
+        "Distraction/driver_actions/safe_drive"           to "Safe Drive",
+        "Distraction/driver_actions/drinking"             to "Drinking",
+        "Distraction/driver_actions/hair_and_makeup"      to "Hair & Makeup",
+        "Distraction/driver_actions/phonecall_left"       to "Phone Call (Left)",
+        "Distraction/driver_actions/phonecall_right"      to "Phone Call (Right)",
+        "Distraction/driver_actions/radio"                to "Adjusting Radio",
+        "Distraction/driver_actions/reach_backseat"       to "Reaching Backseat",
+        "Distraction/driver_actions/reach_side"           to "Reaching Side",
+        "Distraction/driver_actions/talking_to_passenger" to "Talking to Passenger",
+        "Distraction/driver_actions/texting_left"         to "Texting (Left)",
+        "Distraction/driver_actions/texting_right"        to "Texting (Right)",
+        "Distraction/driver_actions/change_gear"          to "Changing Gear",
+    )
+
     companion object {
         private const val MODEL_FILE      = "dmd_dual_simplified_float32.tflite"
         private const val POSE_TASK_FILE  = "pose_landmarker_full.task"
@@ -164,9 +182,13 @@ class ObjectDetectorHelper(
         val outputs = mutableMapOf<Int, Any>(0 to logits)
 
         try {
-            interp.runForMultipleInputsOutputs(inputs, outputs)
+            val currentInterp = interpreter ?: return
+            currentInterp.runForMultipleInputsOutputs(inputs, outputs)
         } catch (e: Exception) {
-            objectDetectorListener?.onError("Inference failed: ${e.message}")
+            // Check if interpreter was closed during inference (e.g. Activity finishing)
+            if (interpreter != null) {
+                objectDetectorListener?.onError("Inference failed: ${e.message}")
+            }
             return
         }
 
@@ -179,11 +201,13 @@ class ObjectDetectorHelper(
         val label    = labels[maxIdx]
 
         val detections = if (maxScore >= CONF_THRESHOLD) {
-            listOf(Detection(listOf(Category(label, maxScore, maxIdx))))
+            val display = displayNames[label] ?: label
+            listOf(Detection(listOf(Category(display, maxScore, maxIdx))))
         } else {
-            // Below threshold → default to safe_drive (index 3)
             val safeIdx = 3
-            listOf(Detection(listOf(Category(labels[safeIdx], probs[safeIdx], safeIdx))))
+            val safeLabel = labels[safeIdx]
+            val display = displayNames[safeLabel] ?: safeLabel
+            listOf(Detection(listOf(Category(display, probs[safeIdx], safeIdx))))
         }
 
         objectDetectorListener?.onResults(

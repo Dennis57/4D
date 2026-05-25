@@ -137,7 +137,7 @@ class DetectionActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorList
     }
 
     private fun triggerAlarm() {
-        if (isAlarmShowing) return
+        if (isAlarmShowing || TimerManager.isTimerRunning.value == true) return
         isAlarmShowing = true
         
         lifecycleScope.launch {
@@ -207,6 +207,11 @@ class DetectionActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorList
                 val minutes = (millis / 1000) / 60
                 val seconds = (millis / 1000) % 60
                 binding.tvCountdown.text = String.format("%02d:%02d", minutes, seconds)
+                
+                // Immediately show detection is paused
+                binding.tvDetectionStatus.text = "Detection paused"
+                binding.tvDetectionStatus.setTextColor(Color.LTGRAY)
+                unsafeFrameCount = 0
             } else {
                 binding.tvCountdown.visibility = View.GONE
             }
@@ -231,6 +236,10 @@ class DetectionActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorList
                 .build()
                 .also {
                     it.setAnalyzer(cameraExecutor) { image ->
+                        if (TimerManager.isTimerRunning.value == true) {
+                            image.close()
+                            return@setAnalyzer
+                        }
                         val bitmapBuffer = Bitmap.createBitmap(
                             image.width,
                             image.height,
@@ -271,6 +280,12 @@ class DetectionActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorList
         imageWidth: Int
     ) {
         runOnUiThread {
+            if (TimerManager.isTimerRunning.value == true) {
+                binding.tvDetectionStatus.text = "Detection paused"
+                binding.tvDetectionStatus.setTextColor(Color.LTGRAY)
+                unsafeFrameCount = 0
+                return@runOnUiThread
+            }
             val detections = result?.detections()
             if (detections != null && detections.isNotEmpty()) {
                 val topDetection = detections[0]
